@@ -126,7 +126,7 @@ export function detectColumnMappings(headers) {
  * @param {number} fallbackIndex
  * @returns {{ dateStr: string, monthKey: string, yearKey: string, quarterKey: string, timestamp: number }}
  */
-function parseDateDetails(rawDate, fallbackIndex) {
+export function parseDateDetails(rawDate, fallbackIndex) {
   let d = null;
   if (rawDate) {
     // Try native Date parsing

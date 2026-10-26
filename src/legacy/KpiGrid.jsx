@@ -1,30 +1,51 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import ReactECharts from 'echarts-for-react';
 import { 
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
   CreditCard, 
   Percent, 
-  Activity,
-  Layers,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Sparkles
 } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '../utils/formatters';
+import { getMiniSparklineOption, getMarginGaugeOption } from '../utils/echartsOptions';
 
-export default function KpiGrid({ kpis, currencySymbol }) {
+export default function KpiGrid({ kpis, timeline, currencySymbol = '$', darkMode = false }) {
   const isProfitable = kpis.netProfit >= 0;
   const expenseRatio = kpis.totalRevenue > 0 ? (kpis.totalExpenses / kpis.totalRevenue) * 100 : 0;
   const profitablePercentage = kpis.totalTransactions > 0 
     ? (kpis.profitableRowsCount / kpis.totalTransactions) * 100 
     : 0;
 
+  // Extract sparkline series from timeline data
+  const rawList = timeline?.monthly || timeline?.raw || [];
+  const revenueTrend = useMemo(() => rawList.map((d) => d.revenue), [rawList]);
+  const expenseTrend = useMemo(() => rawList.map((d) => d.expense), [rawList]);
+  const profitTrend = useMemo(() => rawList.map((d) => d.profit), [rawList]);
+
+  // Mini ECharts Sparkline Options
+  const revSparkOption = useMemo(
+    () => getMiniSparklineOption(revenueTrend, '#6366f1', darkMode),
+    [revenueTrend, darkMode]
+  );
+  const expSparkOption = useMemo(
+    () => getMiniSparklineOption(expenseTrend, '#f43f5e', darkMode),
+    [expenseTrend, darkMode]
+  );
+  const profitSparkOption = useMemo(
+    () => getMiniSparklineOption(profitTrend, isProfitable ? '#10b981' : '#f43f5e', darkMode),
+    [profitTrend, isProfitable, darkMode]
+  );
+
   return (
     <div className="space-y-4">
-      {/* Primary 4 KPI Cards */}
+      {/* Primary 4 KPI Cards with Apache ECharts Sparklines */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 1. Total Revenue Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Revenue
@@ -43,16 +64,27 @@ export default function KpiGrid({ kpis, currencySymbol }) {
                 <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
                 Gross Inflow
               </span>
-              <span>across {kpis.totalTransactions} records</span>
+              <span>across {kpis.totalTransactions} rows</span>
             </div>
           </div>
+
+          {/* Mini ECharts Sparkline */}
+          {revenueTrend.length > 1 && (
+            <div className="mt-3 h-10 w-full opacity-80 hover:opacity-100 transition-opacity">
+              <ReactECharts
+                option={revSparkOption}
+                style={{ height: '40px', width: '100%' }}
+                opts={{ renderer: 'canvas' }}
+              />
+            </div>
+          )}
 
           {/* Accent bottom line */}
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-600" />
         </div>
 
         {/* 2. Total Expenses Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Expenses
@@ -67,28 +99,39 @@ export default function KpiGrid({ kpis, currencySymbol }) {
               {formatCurrency(kpis.totalExpenses, currencySymbol)}
             </div>
             <div className="mt-2 flex items-center text-xs text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center font-medium text-slate-600 dark:text-slate-300 mr-1.5">
+              <span className="inline-flex items-center font-medium text-slate-700 dark:text-slate-300 mr-1.5">
                 {expenseRatio.toFixed(1)}%
               </span>
               <span>of total revenue</span>
             </div>
           </div>
 
+          {/* Mini ECharts Sparkline */}
+          {expenseTrend.length > 1 && (
+            <div className="mt-3 h-10 w-full opacity-80 hover:opacity-100 transition-opacity">
+              <ReactECharts
+                option={expSparkOption}
+                style={{ height: '40px', width: '100%' }}
+                opts={{ renderer: 'canvas' }}
+              />
+            </div>
+          )}
+
           {/* Accent bottom line */}
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-rose-600" />
         </div>
 
-        {/* 3. Net Profit / Loss Card (Highlighted Green/Red) */}
+        {/* 3. Net Profit / Loss Card */}
         <div
           className={`relative overflow-hidden rounded-2xl border p-5 shadow-sm transition-all duration-200 ${
             isProfitable
-              ? 'bg-gradient-to-br from-emerald-50/70 via-white to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 border-emerald-200 dark:border-emerald-800/80 shadow-glow-emerald'
-              : 'bg-gradient-to-br from-rose-50/70 via-white to-white dark:from-rose-950/30 dark:via-slate-900 dark:to-slate-900 border-rose-200 dark:border-rose-800/80 shadow-glow-rose'
+              ? 'bg-gradient-to-br from-emerald-50/70 via-white to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 border-emerald-200 dark:border-emerald-800/80'
+              : 'bg-gradient-to-br from-rose-50/70 via-white to-white dark:from-rose-950/30 dark:via-slate-900 dark:to-slate-900 border-rose-200 dark:border-rose-800/80'
           }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-              {isProfitable ? 'Net Profit' : 'Net Loss'}
+              {isProfitable ? 'Net Profit' : 'Net Deficit'}
             </span>
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -123,13 +166,24 @@ export default function KpiGrid({ kpis, currencySymbol }) {
                     : 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
                 }`}
               >
-                {isProfitable ? 'Profitable' : 'Net Deficit'}
+                {isProfitable ? 'Profitable' : 'Loss'}
               </span>
               <span className="text-slate-500 dark:text-slate-400">
                 Revenue − Costs
               </span>
             </div>
           </div>
+
+          {/* Mini ECharts Sparkline */}
+          {profitTrend.length > 1 && (
+            <div className="mt-3 h-10 w-full opacity-80 hover:opacity-100 transition-opacity">
+              <ReactECharts
+                option={profitSparkOption}
+                style={{ height: '40px', width: '100%' }}
+                opts={{ renderer: 'canvas' }}
+              />
+            </div>
+          )}
 
           {/* Accent bottom line */}
           <div
@@ -139,8 +193,8 @@ export default function KpiGrid({ kpis, currencySymbol }) {
           />
         </div>
 
-        {/* 4. Net Profit Margin (%) Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow">
+        {/* 4. Profit Margin (%) Card */}
+        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Profit Margin
@@ -169,6 +223,22 @@ export default function KpiGrid({ kpis, currencySymbol }) {
               <span>
                 {kpis.profitMargin >= 20 ? 'Strong health' : kpis.profitMargin >= 0 ? 'Moderate' : 'Under pressure'}
               </span>
+            </div>
+          </div>
+
+          {/* Margin Status Indicator Bar */}
+          <div className="mt-4 pt-2">
+            <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+              <div
+                className={`h-full transition-all duration-500 rounded-full ${
+                  kpis.profitMargin >= 20
+                    ? 'bg-emerald-500'
+                    : kpis.profitMargin >= 0
+                    ? 'bg-indigo-500'
+                    : 'bg-rose-500'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(8, Math.abs(kpis.profitMargin)))}%` }}
+              />
             </div>
           </div>
 
